@@ -4,6 +4,7 @@
 from .agent_based_api.v1 import (
     get_value_store,
     register,
+    Metric,
     Service,
     ServiceLabel,
     State,
@@ -112,11 +113,59 @@ def proxmox_bs_checks(item, params, section):
                     if task.get("worker_id", None) is not None:
                         if task.get("worker_id", None) == item:
                             gc_running = True
-        if n == "proxmox-backup-manager garbage-collection status":
-            if k == item:
+        if (
+                (n == "proxmox-backup-manager garbage-collection status")
+                and (k == item)
+            ):
                 gc = json.loads(c)
                 if "upid" in gc:
                     upid = gc["upid"]
+        if (n == "proxmox-backup-client list") and (k == item):
+            i, n = 0, 0
+            for e in json.loads(c):
+                i=i+1
+                n=n+int(e["backup-count"])
+            yield Metric('group_count', i)
+            yield Metric('total_backups', n)
+        if (n == "proxmox-backup-client snapshot list") and (k == item):
+            nr, np, ok, nok = 0, [], 0, []
+            for e in json.loads(c):
+                if "verification" in e:
+                    verify_state = e.get("verification", {}).get("state", "na")
+                    if verify_state == "ok":
+                        ok = ok+1
+                    elif verify_state == "failed":
+                        nok.append(e)
+                    else:
+                        np.append(e)
+                else:
+                    nr = nr+1
+            yield Metric('verify_ok', ok)
+            yield Metric('verify_failed', len(nok))
+            yield Metric('verify_unknown', len(np))
+            yield Metric('not_verified_yet', nr)
+            yield Result(state=State.OK, summary=(
+                'Snapshots Verified: %d' % ok
+                ))
+            yield Result(state=State.OK, summary=(
+                'Snapshots not verified yet: %d' % nr
+                ))
+            for e in np:
+                group = '%s/%s' % (e["backup-type"], e["backup-id"])
+                stat = e["verification"]["state"]
+                upid = e["verification"]["upid"]
+                yield Result(state=State.UNKN, summary=(
+                    '%s (%s) unkown state %s' % (group, upid, stat)
+                    ))
+            for e in nok:
+                group = '%s/%s' % (e["backup-type"], e["backup-id"])
+                stat = e["verification"]["state"]
+                upid = e["verification"]["upid"]
+                yield Result(state=State.CRIT, summary=(
+                    'Verification of %s (%s) %s' % (group, upid, stat)
+                    ))
+
+
         if (n == "proxmox-backup-client status") and (k == item):
             try:
                 ds_status = json.loads(c)

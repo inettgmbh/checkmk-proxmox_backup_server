@@ -57,7 +57,8 @@ OUTPUT_FORMAT="--output-format json-pretty"
 
 command_section "proxmox-backup-manager versions" $OUTPUT_FORMAT
 TMP_DATASTORES=$( mktemp -p /tmp/ )
-command_section -t $TMP_DATASTORES "proxmox-backup-manager datastore list" $OUTPUT_FORMAT
+command_section -t $TMP_DATASTORES \
+  "proxmox-backup-manager datastore list" $OUTPUT_FORMAT
 
 command_section "proxmox-backup-manager task list" $OUTPUT_FORMAT
 
@@ -66,21 +67,31 @@ TMP_UPIDS=$( mktemp -p /tmp/ )
 TMP_GC_FILES=$( mktemp -p /tmp/ )
 jq -r '.[].name' $TMP_DATASTORES | while read -r name; do
   TMP_GC=$( mktemp -p /tmp/ )
-  printf "$TMP_GC\n" >> "$TMP_GC_FILES"
-  command_section -t "$TMP_GC" -p "$name" "proxmox-backup-manager garbage-collection status" $name $OUTPUT_FORMAT
-  command_section -p "$name" "proxmox-backup-client status" --repository "localhost:$name" $OUTPUT_FORMAT
+  printf "$TMP_GC" >> "$TMP_GC_FILES"
+  command_section -t "$TMP_GC" -p "$name" \
+    "proxmox-backup-manager garbage-collection status" $name $OUTPUT_FORMAT
   jq -r '.upid' "$TMP_GC" >> $TMP_UPIDS
+  command_section -p "$name" \
+    "proxmox-backup-client list" --repository "localhost:$name" $OUTPUT_FORMAT
+  command_section -p "$name" \
+    "proxmox-backup-client snapshot list" --repository "localhost:$name" \
+    $OUTPUT_FORMAT
+  command_section -p "$name" \
+    "proxmox-backup-client status" --repository "localhost:$name" \
+    $OUTPUT_FORMAT
 done
 
 cat $TMP_UPIDS | while read -r upid; do
-  command_section -P "sed -n '/^Removed garbage: /,\$p'" -p "$upid" "proxmox-backup-manager task log" "$upid"
+  command_section -P "sed -n '/^Removed garbage: /,\$p'" -p "$upid" \
+    "proxmox-backup-manager task log" "$upid"
 done
+
+proxmox-backup-client logout --repository "localhost"
+export PBS_PASSWORD=
 
 printf "$TMP_GC_FILES" >> $TMP_GC_FILES
 
 rm -vf $TMP_DATASTORE $TMP_UPIDS $(cat $TMP_GC_FILES | xargs) >&2
-
-export PBS_PASSWORD=
 
 echo "===EOD==="
 echo "="

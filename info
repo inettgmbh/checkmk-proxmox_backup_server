@@ -9,7 +9,7 @@
  'name': 'proxmox_bs',
  'num_files': 5,
  'title': 'Proxmox Backup Server',
- 'version': '0.1.18',
+ 'version': '0.1.19',
  'version.min_required': '2.0.0',
  'version.packaged': '2.0.0p3',
  'version.usable_until': None}
