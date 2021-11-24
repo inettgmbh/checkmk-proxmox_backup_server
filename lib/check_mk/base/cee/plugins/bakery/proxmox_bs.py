@@ -15,7 +15,11 @@ from .bakery_api.v1 import (
 
 def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
     if conf != None:
-        yield Plugin(base_os=OS.LINUX, source=Path("proxmox_bs"))
+        yield Plugin(
+            base_os=OS.LINUX,
+            source=Path("proxmox_bs"),
+            interval=3600,
+      )
         yield PluginConfig(
             base_os=OS.LINUX,
             lines=[
