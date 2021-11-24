@@ -1,6 +1,6 @@
 {'author': 'Maximilian Hill <mhill@inett.de>',
- 'description': '',
- 'download_url': '',
+ 'description': 'https://github.com/inettgmbh/checkmk-proxmox_backup_server',
+ 'download_url': 'https://github.com/inettgmbh/checkmk-proxmox_backup_server/releases',
  'files': {'agent_based': ['proxmox_bs.py'],
            'agents': ['plugins/proxmox_bs'],
            'lib': ['check_mk/base/cee/plugins/bakery/proxmox_bs.py'],
@@ -8,7 +8,7 @@
  'name': 'proxmox_bs',
  'num_files': 4,
  'title': 'Proxmox Backup Server',
- 'version': '0.3.3',
+ 'version': '0.3.4',
  'version.min_required': '2.0.0',
  'version.packaged': '2.0.0p3',
  'version.usable_until': None}
