@@ -1,0 +1,57 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set env
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install git+https://github.com/inettgmbh/python-mkp.git@0.6
+      - name: Build
+        run: |
+          chmod +x build/mkp-pack build/update-version
+          build/update-version ${{ env.RELEASE_VERSION }}
+          build/mkp-pack
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v2.2.3
+        with:
+          # Artifact name
+          name: mkp-package
+          # A file, directory or wildcard pattern that describes what to upload
+          path: "*.mkp"
+          # The desired behavior if no files are found using the provided path.
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: proxmox_bs-${{ env.RELEASE_VERSION }}.mkp
+          asset_name: proxmox_bs-${{ env.RELEASE_VERSION }}.mkp
+          asset_content_type: application/gzip
