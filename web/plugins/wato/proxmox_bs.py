@@ -16,19 +16,34 @@ from cmk.gui.cee.plugins.wato.agent_bakery.rulespecs.utils import (
     RulespecGroupMonitoringAgentsAgentPlugins
 )
 from cmk.gui.valuespec import (
-    DropdownChoice,
+    Alternative,
+    Dictionary,
+    FixedValue,
+    Password,
+    TextInput,
 )
 
 
 def _valuespec_agent_config_proxmox_bs():
-    return DropdownChoice(
+    return Alternative(
         title = _("Proxmox Backup Server (Linux)"),
-        help = _("This will deploy the agent plugin <tt>proxmox_bs</tt>"),
-        choices = [
-            ( 'server', _("Deploy plugin for Proxmox Backup Server") ),
-            ( 'client', _("Deploy plugin for Proxmox Backup Client only")),
-            ( None, _("Do not deploy plugin for Proxmox Backup") ),
-        ]
+        help = _("Proxmox Backup Server Monitoring (<tt>proxmox_bs</tt>)"),
+        style = 'dropdown',
+        elements = [
+            Dictionary(
+                title = _("Deploy Proxmox Backup Server plugin"),
+                elements = [
+                    ( 'auth_user', TextInput(title=_("Username")) ),
+                    ( 'auth_pass', Password(title=_("Password")) ),
+                ],
+                optional_keys = [],
+            ),
+            FixedValue(
+                None,
+                title = _("Do not deploy plugin for Proxmox Backup server"),
+                totext = _("(disabled)"),
+            )
+        ],
     )
 
 

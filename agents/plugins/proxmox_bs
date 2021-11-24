@@ -27,8 +27,6 @@ proxmox-backup-client
 jq
 .
 
-$(< /etc/check_mk/proxmox_bs.env)
-
 command_section() {
   PIPE=
   SECTION_POSTFIX=
@@ -53,6 +51,10 @@ command_section() {
   sh -c "$cmd $* $PIPE"
 }
 
+$(< /etc/check_mk/proxmox_bs.env)
+PBS_REPO="${PBS_USERNAME}@localhost"
+proxmox-backup-client login
+
 OUTPUT_FORMAT="--output-format json-pretty"
 
 command_section "proxmox-backup-manager versions" $OUTPUT_FORMAT
@@ -72,12 +74,12 @@ jq -r '.[].name' $TMP_DATASTORES | while read -r name; do
     "proxmox-backup-manager garbage-collection status" $name $OUTPUT_FORMAT
   jq -r '.upid' "$TMP_GC" >> $TMP_UPIDS
   command_section -p "$name" \
-    "proxmox-backup-client list" --repository "localhost:$name" $OUTPUT_FORMAT
+    "proxmox-backup-client list" --repository "$PBS_REPO:$name" $OUTPUT_FORMAT
   command_section -p "$name" \
-    "proxmox-backup-client snapshot list" --repository "localhost:$name" \
+    "proxmox-backup-client snapshot list" --repository "$PBS_REPO:$name" \
     $OUTPUT_FORMAT
   command_section -p "$name" \
-    "proxmox-backup-client status" --repository "localhost:$name" \
+    "proxmox-backup-client status" --repository "$PBS_REPO:$name" \
     $OUTPUT_FORMAT
 done
 
@@ -86,7 +88,7 @@ cat $TMP_UPIDS | while read -r upid; do
     "proxmox-backup-manager task log" "$upid"
 done
 
-proxmox-backup-client logout --repository "localhost"
+proxmox-backup-client logout --repository "$PBS_REPO"
 export PBS_PASSWORD=
 
 printf "$TMP_GC_FILES" >> $TMP_GC_FILES

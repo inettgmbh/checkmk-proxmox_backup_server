@@ -129,27 +129,33 @@ def proxmox_bs_checks(item, params, section):
             yield Metric('total_backups', n)
         if (n == "proxmox-backup-client snapshot list") and (k == item):
             nr, np, ok, nok = 0, [], 0, []
-            for e in json.loads(c):
-                if "verification" in e:
-                    verify_state = e.get("verification", {}).get("state", "na")
-                    if verify_state == "ok":
-                        ok = ok+1
-                    elif verify_state == "failed":
-                        nok.append(e)
+            try:
+                for e in json.loads(c):
+                    if "verification" in e:
+                        verify_state = e.get("verification", {}).get("state", "na")
+                        if verify_state == "ok":
+                            ok = ok+1
+                        elif verify_state == "failed":
+                            nok.append(e)
+                        else:
+                            np.append(e)
                     else:
-                        np.append(e)
-                else:
-                    nr = nr+1
-            yield Metric('verify_ok', ok)
-            yield Metric('verify_failed', len(nok))
-            yield Metric('verify_unknown', len(np))
-            yield Metric('not_verified_yet', nr)
-            yield Result(state=State.OK, summary=(
-                'Snapshots Verified: %d' % ok
-                ))
-            yield Result(state=State.OK, summary=(
-                'Snapshots not verified yet: %d' % nr
-                ))
+                        nr = nr+1
+                yield Metric('verify_ok', ok)
+                yield Metric('verify_failed', len(nok))
+                yield Metric('verify_unknown', len(np))
+                yield Metric('not_verified_yet', nr)
+                yield Result(state=State.OK, summary=(
+                    'Snapshots Verified: %d' % ok
+                    ))
+                yield Result(state=State.OK, summary=(
+                    'Snapshots not verified yet: %d' % nr
+                    ))
+            except:
+                yield Result(
+                    state=State.WARN,
+                    summary='snapshot parsing error',
+                )
             for e in np:
                 group = '%s/%s' % (e["backup-type"], e["backup-id"])
                 stat = e["verification"]["state"]

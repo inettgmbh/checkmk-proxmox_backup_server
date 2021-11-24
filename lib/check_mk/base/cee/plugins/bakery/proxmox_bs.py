@@ -4,14 +4,26 @@ import pprint
 from pathlib import Path
 from typing import Any, Dict
 
-from .bakery_api.v1 import FileGenerator, OS, Plugin, register
+from .bakery_api.v1 import (
+        FileGenerator,
+        OS,
+        Plugin,
+        PluginConfig,
+        register,
+)
 
 
 def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
-    if conf == 'server':
+    if conf != None:
         yield Plugin(base_os=OS.LINUX, source=Path("proxmox_bs"))
-    elif conf == 'client':
-        yield Plugin(base_os=OS.LINUX, source=Path("proxmox_bs_client"))
+        yield PluginConfig(
+            base_os=OS.LINUX,
+            lines=[
+                "export PBS_USERNAME=%s" % conf.get('auth_user'),
+                "export PBS_PASSWORD=%s" % conf.get('auth_pass'),
+            ],
+            target=Path("proxmox_bs.env"),
+        )
 
 
 register.bakery_plugin(
