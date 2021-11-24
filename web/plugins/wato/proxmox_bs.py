@@ -27,7 +27,10 @@ from cmk.gui.valuespec import (
 def _valuespec_agent_config_proxmox_bs():
     return Alternative(
         title = _("Proxmox Backup Server (Linux)"),
-        help = _("Proxmox Backup Server Monitoring (<tt>proxmox_bs</tt>)"),
+        help = _(
+            "Proxmox Backup Server Monitoring (<tt>proxmox_bs</tt>)<br/>"
+            "<b>This plugin may result in massive agent outputs</b>"
+            ),
         style = 'dropdown',
         elements = [
             Dictionary(
