@@ -2,9 +2,8 @@
 # -*- encoding: utf-8; py-indent-offset: 4 -*-
 
 # Copyright (c) 2021 inett GmbH
-#          Maximilian Hill <mhill@inett.de>
 # License: GNU General Public License v2
-# A file is subject to the terms and conditions defined in the file COPYING,
+# A file is subject to the terms and conditions defined in the file LICENSE,
 # which is part of this source code package.
 
 from cmk.gui.i18n import _

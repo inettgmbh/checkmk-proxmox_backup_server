@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Copyright (c) 2021 inett GmbH
+# License: GNU General Public License v2
+# A file is subject to the terms and conditions defined in the file LICENSE,
+# which is part of this source code package.
+
 from .agent_based_api.v1 import (
     get_value_store,
     register,

@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 # -*- encoding: utf-8; py-indent-offset: 4 -*-
+
+# Copyright (c) 2021 inett GmbH
+# License: GNU General Public License v2
+# A file is subject to the terms and conditions defined in the file LICENSE,
+# which is part of this source code package.
+
 import pprint
 from pathlib import Path
 from typing import Any, Dict
