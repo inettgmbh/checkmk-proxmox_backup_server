@@ -109,6 +109,9 @@ def proxmox_bs_checks(item, params, section):
     running_tasks = []
     value_store = get_value_store()
 
+    group_count = 0
+    total_backups = 0
+
     for n, k, c in proxmox_bs_subsections_checks(section):
         if n == "proxmox-backup-manager task list":
             task_list = json.loads(c)
@@ -126,12 +129,9 @@ def proxmox_bs_checks(item, params, section):
                 if "upid" in gc:
                     upid = gc["upid"]
         if (n == "proxmox-backup-client list") and (k == item):
-            i, n = 0, 0
             for e in json.loads(c):
-                i=i+1
-                n=n+int(e["backup-count"])
-            yield Metric('group_count', i)
-            yield Metric('total_backups', n)
+                group_count=group_count+1
+                total_backups=total_backups+int(e["backup-count"])
         if (n == "proxmox-backup-client snapshot list") and (k == item):
             nr, np, ok, nok = 0, [], 0, []
             try:
@@ -146,10 +146,14 @@ def proxmox_bs_checks(item, params, section):
                             np.append(e)
                     else:
                         nr = nr+1
+                yield Metric('group_count', group_count)
+                yield Metric('total_backups', total_backups)
                 yield Metric('verify_ok', ok)
                 yield Metric('verify_failed', len(nok))
                 yield Metric('verify_unknown', len(np))
-                yield Metric('not_verified_yet', nr)
+                yield Metric('not_verified_yet', nr,
+                    levels=(group_count, group_count*2)
+                )
                 yield Result(state=State.OK, summary=(
                     'Snapshots Verified: %d' % ok
                     ))
