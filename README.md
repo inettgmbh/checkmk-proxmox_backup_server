@@ -1,4 +1,4 @@
-# check_mk Plugin for Proxmox Backup Server
+# check_mk Extension for Proxmox Backup Server [![(inett GmbH)](https://www.inett.de/assets/images/icons/inett.x50.jpg)](https://www.inett.de/it-loesungen/checkmk)
 [![release](https://github.com/inettgmbh/checkmk-proxmox_backup_server/actions/workflows/release.yml/badge.svg)](https://github.com/inettgmbh/checkmk-proxmox_backup_server/actions/workflows/release.yml)
 
 This check_mk extension adds checks Proxmox Backup Server:
