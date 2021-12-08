@@ -184,8 +184,8 @@ def proxmox_bs_checks(item, params, section):
         if (n == "proxmox-backup-client status") and (k == item):
             try:
                 ds_status = json.loads(c)
-                size_mb = int(ds_status["total"])
-                avail_mb = int(ds_status["avail"])
+                size_mb = int(ds_status["total"])/(1024**2)
+                avail_mb = int(ds_status["avail"])/(1024**2)
 
                 yield from df.df_check_filesystem_single(
                     value_store, item, size_mb, avail_mb,
