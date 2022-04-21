@@ -31,6 +31,7 @@ def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
             lines=[
                 "export PBS_USERNAME=%s" % conf.get('auth_user'),
                 "export PBS_PASSWORD=%s" % conf.get('auth_pass'),
+                "export PBS_FINGERPRINT=%s" % conf.get('fingerprint'),
             ],
             target=Path("proxmox_bs.env"),
         )

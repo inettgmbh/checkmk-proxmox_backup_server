@@ -37,6 +37,7 @@ def _valuespec_agent_config_proxmox_bs():
                 elements = [
                     ( 'auth_user', TextInput(title=_("Username")) ),
                     ( 'auth_pass', Password(title=_("Password")) ),
+                    ( 'fingerprint', TextInput(title=_("Fingerprint")) ),
                 ],
                 optional_keys = [],
             ),
