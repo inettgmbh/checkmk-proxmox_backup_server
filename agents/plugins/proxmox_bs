@@ -86,6 +86,7 @@ jq -r '.[].name' $TMP_DATASTORES | while read -r name; do
   command_section -p "$name" \
     "proxmox-backup-client status" --repository "$PBS_REPO:$name" \
     $OUTPUT_FORMAT
+  proxmox-backup-client logout --repository "$PBS_REPO:$name" > /dev/null 2>&1
 done
 
 cat $TMP_UPIDS | while read -r upid; do
@@ -93,7 +94,6 @@ cat $TMP_UPIDS | while read -r upid; do
     "proxmox-backup-manager task log" "$upid"
 done
 
-proxmox-backup-client logout --repository "$PBS_REPO"
 export PBS_PASSWORD=
 
 printf "$TMP_GC_FILES" >> $TMP_GC_FILES
