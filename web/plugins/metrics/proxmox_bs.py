@@ -40,7 +40,7 @@ metric_info['verify_unknown'] = {
     'unit' : 'count',
     'color': indexed_color(5, 6),
 }
-metric_info['not_verified_yet'] = {
+metric_info['verify_none'] = {
     'title': _('Snapshots yet to be verified'),
     'unit' : 'count',
     'color': indexed_color(6, 6),
@@ -52,13 +52,13 @@ graph_info['snapshots'] = {
         ('verify_ok', 'stack', metric_info['verify_ok']['title']),
         ('verify_failed', 'stack', metric_info['verify_failed']['title']),
         ('verify_unknown', 'stack', metric_info['verify_unknown']['title']),
-        ('not_verified_yet', 'stack', metric_info['not_verified_yet']['title']),
+        ('verify_none', 'stack', metric_info['verify_none']['title']),
     ],
     'optional_metrics': [
         'verify_ok',
         'verify_failed',
         'verify_unknown',
-        'not_verified_yet',
+        'verify_none',
     ],
 }
 

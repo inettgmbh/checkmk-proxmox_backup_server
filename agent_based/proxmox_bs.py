@@ -151,7 +151,7 @@ def proxmox_bs_checks(item, params, section):
                 yield Metric('verify_ok', ok)
                 yield Metric('verify_failed', len(nok))
                 yield Metric('verify_unknown', len(np))
-                yield Metric('not_verified_yet', nr,
+                yield Metric('verify_none', nr,
                     levels=(group_count, group_count*2)
                 )
                 yield Result(state=State.OK, summary=(
