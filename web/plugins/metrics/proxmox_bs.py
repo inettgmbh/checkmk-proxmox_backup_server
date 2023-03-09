@@ -60,5 +60,6 @@ graph_info['snapshots'] = {
         'verify_unknown',
         'verify_none',
     ],
+    'range': ('verify_ok:min', 'total_bakups:max'),
 }
 

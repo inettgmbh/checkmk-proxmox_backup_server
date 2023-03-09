@@ -95,6 +95,7 @@ def proxmox_bs_discovery(section):
                     )
             return
 
+
 def proxmox_bs_checks(item, params, section):
     req_ok = True
     expected = []
@@ -170,7 +171,7 @@ def proxmox_bs_checks(item, params, section):
                 stat = e["verification"]["state"]
                 upid = e["verification"]["upid"]
                 yield Result(state=State.UNKN, summary=(
-                    '%s (%s) unkown state %s' % (group, upid, stat)
+                    '%s (%s) unknown state %s' % (group, upid, stat)
                     ))
             for e in nok:
                 group = '%s/%s' % (e["backup-type"], e["backup-id"])
@@ -179,7 +180,6 @@ def proxmox_bs_checks(item, params, section):
                 yield Result(state=State.CRIT, summary=(
                     'Verification of %s (%s) %s' % (group, upid, stat)
                     ))
-
 
         if (n == "proxmox-backup-client status") and (k == item):
             try:
@@ -213,7 +213,6 @@ def proxmox_bs_checks(item, params, section):
 
 register.agent_section(
     name="proxmox_bs",
-    #host_label_function = proxmox_bs_hostlabels,
 )
 
 register.check_plugin(
