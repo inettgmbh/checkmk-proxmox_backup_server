@@ -94,7 +94,7 @@ done
 # shellcheck disable=SC2086 disable=SC2002
 cat $TMP_UPIDS | while read -r upid; do
   command_section -P "sed '/^Removed /,\$!d'" -p "$upid" \
-    "proxmox-backup-manager task log" "$upid"
+    "proxmox-backup-manager task log" "$upid" '2>&1'
 done
 
 export PBS_PASSWORD=
