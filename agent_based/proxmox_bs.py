@@ -130,9 +130,12 @@ def proxmox_bs_checks(item, params, section):
                 if "upid" in gc:
                     upid = gc["upid"]
         if (n == "proxmox-backup-client list") and (k == item):
-            for e in json.loads(c):
-                group_count=group_count+1
-                total_backups=total_backups+int(e["backup-count"])
+            try:
+                for e in json.loads(c):
+                    group_count = group_count+1
+                    total_backups = total_backups+int(e["backup-count"])
+            except json.JSONDecodeError:
+                pass
         if (n == "proxmox-backup-client snapshot list") and (k == item):
             nr, np, ok, nok = 0, [], 0, []
             try:
