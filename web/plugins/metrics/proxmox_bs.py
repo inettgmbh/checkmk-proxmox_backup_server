@@ -41,7 +41,7 @@ metric_info['verify_unknown'] = {
     'color': indexed_color(5, 6),
 }
 metric_info['verify_none'] = {
-    'title': _('Snapshots yet to be verified'),
+    'title': _('Unverified Snapshots'),
     'unit' : 'count',
     'color': indexed_color(6, 6),
 }
