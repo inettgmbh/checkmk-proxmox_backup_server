@@ -11,9 +11,6 @@ from cmk.gui.plugins.wato import (
     HostRulespec,
     rulespec_registry,
 )
-from cmk.gui.cee.plugins.wato.agent_bakery.rulespecs.utils import (
-    RulespecGroupMonitoringAgentsAgentPlugins
-)
 from cmk.gui.valuespec import (
     Alternative,
     Dictionary,
@@ -50,9 +47,16 @@ def _valuespec_agent_config_proxmox_bs():
     )
 
 
-rulespec_registry.register(
-    HostRulespec(
-        group=RulespecGroupMonitoringAgentsAgentPlugins,
-        name="agent_config:proxmox_bs",
-        valuespec=_valuespec_agent_config_proxmox_bs,
-    ))
+try:
+    from cmk.gui.cee.plugins.wato.agent_bakery.rulespecs.utils import (
+        RulespecGroupMonitoringAgentsAgentPlugins
+    )
+
+    rulespec_registry.register(
+        HostRulespec(
+            group=RulespecGroupMonitoringAgentsAgentPlugins,
+            name="agent_config:proxmox_bs",
+            valuespec=_valuespec_agent_config_proxmox_bs,
+        ))
+except ImportError:
+    pass
