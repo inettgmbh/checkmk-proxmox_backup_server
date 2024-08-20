@@ -1,0 +1,23 @@
+{"author": "Felix Driessler <fdriessler@inett.de>",
+ "description": "https://www.inett.de/it-loesungen/checkmk",
+ "download_url": "https://github.com/inettgmbh/checkmk-proxmox_backup_server/releases/latest",
+ "files": {
+   "agents": [
+     "plugins/proxmox_bs"
+   ],
+   "cmk_addons_plugins": [
+     "proxmox_bs/agent_based/proxmox_bs.py",
+     "proxmox_bs/graphing/proxmox_bs.py",
+     "proxmox_bs/rulesets/proxmox_bs.py"
+   ],
+   "lib": [
+     "check_mk/base/cee/plugins/bakery/proxmox_bs.py"
+   ]
+ },
+ "name": "proxmox_bs",
+ "num_files": 5,
+ "title": "Proxmox Backup Server",
+ "version": "0.4.16",
+ "version.min_required": "2.3.0b6",
+ "version.packaged": "2.3.0p7"
+}

@@ -59,10 +59,8 @@ command_section() {
 }
 
 source /etc/check_mk/proxmox_bs.env
-PBS_REPO="${PBS_USERNAME}@localhost"
-proxmox-backup-client login
 
-OUTPUT_FORMAT="--output-format json-pretty"
+OUTPUT_FORMAT="--output-format json"
 
 command_section "proxmox-backup-manager versions" $OUTPUT_FORMAT
 TMP_DATASTORES=$( mktemp -p /tmp/ )
@@ -75,20 +73,23 @@ TMP_UPIDS=$( mktemp -p /tmp/ )
 
 TMP_GC_FILES=$( mktemp -p /tmp/ )
 jq -r '.[].name' "$TMP_DATASTORES" | while read -r name; do
+  export PBS_REPOSITORY="${PBS_USERNAME}@${PBS_DNS_NAME}:${name}"
+  proxmox-backup-client login
+
   TMP_GC=$( mktemp -p /tmp/ )
   printf '%s' "$TMP_GC" >> "$TMP_GC_FILES"
   command_section -t "$TMP_GC" -p "$name" \
     "proxmox-backup-manager garbage-collection status" "$name" $OUTPUT_FORMAT
   jq -r '.upid' "$TMP_GC" >> "$TMP_UPIDS"
   command_section -p "$name" \
-    "proxmox-backup-client list" --repository "$PBS_REPO:$name" $OUTPUT_FORMAT
+    "proxmox-backup-client list" --repository "$PBS_REPOSITORY" $OUTPUT_FORMAT
   command_section -p "$name" \
-    "proxmox-backup-client snapshot list" --repository "$PBS_REPO:$name" \
+    "proxmox-backup-client snapshot list" --repository "$PBS_REPOSITORY" \
     $OUTPUT_FORMAT
   command_section -p "$name" \
-    "proxmox-backup-client status" --repository "$PBS_REPO:$name" \
+    "proxmox-backup-client status" --repository "$PBS_REPOSITORY" \
     $OUTPUT_FORMAT
-  proxmox-backup-client logout --repository "$PBS_REPO:$name" > /dev/null 2>&1
+  proxmox-backup-client logout --repository "$PBS_REPOSITORY" > /dev/null 2>&1
 done
 
 # shellcheck disable=SC2086 disable=SC2002
@@ -106,4 +107,3 @@ rm -vf $TMP_DATASTORE $TMP_UPIDS $(cat $TMP_GC_FILES | xargs) >&2
 
 echo "===EOD==="
 echo "="
-

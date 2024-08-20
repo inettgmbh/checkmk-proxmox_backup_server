@@ -20,18 +20,19 @@ from .bakery_api.v1 import (
 
 
 def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
-    if conf != None:
+    if conf is not None:
         yield Plugin(
             base_os=OS.LINUX,
             source=Path("proxmox_bs"),
             interval=3600,
-      )
+        )
         yield PluginConfig(
             base_os=OS.LINUX,
             lines=[
-                "export PBS_USERNAME=%s" % conf.get('auth_user'),
-                "export PBS_PASSWORD=%s" % conf.get('auth_pass'),
-                "export PBS_FINGERPRINT=%s" % conf.get('fingerprint'),
+                f"export PBS_USERNAME='{conf.get('auth_user')}'",
+                f"export PBS_PASSWORD='{secret}'",
+                f"export PBS_DNS_NAME='{conf.get('dns_name')}'",
+                f"export PBS_FINGERPRINT='{conf.get('fingerprint')}'",
             ],
             target=Path("proxmox_bs.env"),
         )
