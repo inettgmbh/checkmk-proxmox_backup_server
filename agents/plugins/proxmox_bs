@@ -34,7 +34,7 @@ jq
 
 command_section() {
   PIPE=
-  SECTION_POSTFIX=
+  SECTION_SUFFIX=
   while [[ "$1" == -* ]]; do
     if [ "$1" == "-P" ]; then
       PIPE="${PIPE} | $2"
@@ -45,13 +45,13 @@ command_section() {
       shift 2
     fi
     if [ "$1" == "-p" ]; then
-      SECTION_POSTFIX=$2
+      SECTION_SUFFIX=$2
       shift 2
     fi
   done
   cmd=$1
   shift
-  printf '===%s===%s\n' "$cmd" "$SECTION_POSTFIX"
+  printf '===%s===%s\n' "$cmd" "$SECTION_SUFFIX"
   # shellcheck disable=SC2086
   echo /bin/env $cmd $* $PIPE >&2
   # shellcheck disable=SC2086
