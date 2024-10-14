@@ -7,6 +7,7 @@
 # which is part of this source code package.
 
 import pprint
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -18,6 +19,8 @@ from .bakery_api.v1 import (
         register,
 )
 
+from cmk.utils import password_store
+
 
 def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
     if conf is not None:
@@ -26,6 +29,14 @@ def get_proxmox_bs_files(conf: Dict[str, Any]) -> FileGenerator:
             source=Path("proxmox_bs"),
             interval=3600,
         )
+        password = conf.get('auth_pass')
+        if password[1] == "explicit_password":
+            secret = password[2][1]
+        elif password[1] == "stored_password":
+            secret = password_store.lookup(password_store.password_store_path(), password[2][0])
+        else:
+            secret = ""
+            sys.exit(1)
         yield PluginConfig(
             base_os=OS.LINUX,
             lines=[
