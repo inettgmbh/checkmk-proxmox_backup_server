@@ -14,10 +14,14 @@ from .agent_based_api.v1 import (
     ServiceLabel,
     State,
     Result,
+    render
 )
 from .utils import df
 import re
 import json
+
+import time
+from datetime import datetime
 
 proxmox_bs_subsection_start = re.compile("^===")
 proxmox_bs_subsection_int = re.compile("===.*$")
@@ -228,3 +232,147 @@ register.check_plugin(
     check_ruleset_name="filesystem",
 )
 
+
+
+
+
+
+
+
+
+# Check for each single client
+def proxmox_bs_gen_clientname(client_json):
+    if "comment" in client_json and "backup-id" in client_json:
+        return str(client_json["backup-id"]) + "-" + str(client_json["comment"])
+
+def proxmox_bs_clients_discovery(section):
+    for n, k, c in proxmox_bs_subsections_discovery(section):
+        if n == "proxmox-backup-client snapshot list":
+            clients = []
+
+            for client_section in json.loads(c):
+                if "comment" in client_section and "backup-id" in client_section:
+                    cn = proxmox_bs_gen_clientname(client_section)
+
+                    if not cn in clients:
+                        clients.append(cn)
+
+            for client_name in clients:
+                yield Service(
+                    item=client_name,
+                    #labels=[ServiceLabel('pbs/datastore', 'yes')]
+                )   
+            
+            return
+
+def proxmox_bs_clients_checks(item, params, section):
+    clients = {}
+
+    for n, k, c in proxmox_bs_subsections_checks(section):
+        if (n == "proxmox-backup-client snapshot list"):
+            try:
+                for e in json.loads(c):
+                    #Get clientname
+                    cn = proxmox_bs_gen_clientname(e)
+
+                    #Only process do fruther processing for current item
+                    if cn != item:
+                        continue
+
+                    if not cn in clients:
+                        clients[cn] = {}
+                    
+                    #Verification states
+                    if not "verification" in clients[cn]:
+                        clients[cn]["verification"] = {}
+                        clients[cn]["verification"]["ok"] = 0
+                        clients[cn]["verification"]["failed"] = 0
+                        clients[cn]["verification"]["notdone"] = 0
+
+                    if "verification" in e:
+                        verify_state = e.get("verification", {}).get("state", "na")
+                        if verify_state == "ok":
+                            clients[cn]["verification"]["ok"] += 1
+                        elif verify_state == "failed":
+                            clients[cn]["verification"]["failed"] += 1
+                        else:
+                            clients[cn]["verification"]["notdone"] +=1
+                    else:
+                            clients[cn]["verification"]["failed"] += 1
+
+                    #Backup age
+                    dt = e["backup-time"]
+                    age = int(time.time() - dt)
+                    if not "backup-time" in clients[cn]:
+                        clients[cn]["time"] = dt
+                        clients[cn]["age"] = age
+                    else:
+                        if dt > clients[cn]["time"]:
+                            clients[cn]["time"] = dt
+                            clients[cn]["age"] = age
+            except:
+                yield Result(
+                    state=State.UNKNOWN,
+                    summary='client parsing error',
+                )
+
+            try: #second try for output
+                #Process client result and yield results (in the clients array should only be the client matching the item)
+                for cn in clients:
+                    if cn != item: #useless, because filtering for the right item is done above. But leave it there for safty.
+                        continue
+
+                    #Snapshot Checks
+                    #Check for OK = 0
+                    #Check for failed
+                    if clients[cn]["verification"]["failed"] == 0:
+                        s=State.OK
+                    else:
+                        s=State.CRIT
+
+                    dpt = ""
+                    if s == State.OK and clients[cn]["verification"]["ok"] < params["snapshot_min_ok"]:
+                        s=State.WARN 
+                        dpt= "(but minimum of %s not meet)" % params["snapshot_min_ok"]
+
+                    yield Result(state=s, summary=(
+                        'Snapshots Verified OK %s: %d' % (dpt,clients[cn]["verification"]["ok"])
+                        ))
+                    yield Result(state=s, summary=(
+                        'Snapshots Verified failed: %d' % clients[cn]["verification"]["failed"]
+                        ))
+                    yield Result(state=s, summary=(
+                        'Snapshots Verified notdone: %d' % clients[cn]["verification"]["notdone"]
+                        ))
+
+                    #Age Check
+                    warn_age, critical_age = params['bkp_age']
+
+                    age = clients[cn]["age"]
+
+                    if age >= critical_age:
+                        s = State.CRIT
+                    elif age >= warn_age:
+                        s = State.WARN
+                    else:
+                        s = State.OK
+
+                    yield Result(state=s, summary=(
+                        'Time: %s, Age: %s' % (render.datetime(clients[cn]["time"]), render.timespan(age))
+                        ))
+            except Exception as ex:
+                yield Result(
+                    state=State.UNKNOWN,
+                    summary='client output error',
+                )
+
+default_proxmox_bs_clients_params={'bkp_age': (172800, 259200), 'snapshot_min_ok': 1}
+register.check_plugin(
+    name="proxmox_bs_clients",
+    service_name="PBS Client %s",
+    sections=["proxmox_bs"],
+    discovery_function=proxmox_bs_clients_discovery,
+    check_function=proxmox_bs_clients_checks,
+    check_default_parameters=default_proxmox_bs_clients_params,
+    check_ruleset_name="proxmox_bs_clients"
+)

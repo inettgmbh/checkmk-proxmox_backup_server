@@ -60,7 +60,7 @@ command_section() {
 
 source /etc/check_mk/proxmox_bs.env
 PBS_REPO="${PBS_USERNAME}@localhost"
-proxmox-backup-client login
+#proxmox-backup-client login #Not needed? Causes long delay.
 
 OUTPUT_FORMAT="--output-format json-pretty"
 
@@ -80,11 +80,29 @@ jq -r '.[].name' "$TMP_DATASTORES" | while read -r name; do
   command_section -t "$TMP_GC" -p "$name" \
     "proxmox-backup-manager garbage-collection status" "$name" $OUTPUT_FORMAT
   jq -r '.upid' "$TMP_GC" >> "$TMP_UPIDS"
-  command_section -p "$name" \
-    "proxmox-backup-client list" --repository "$PBS_REPO:$name" $OUTPUT_FORMAT
-  command_section -p "$name" \
-    "proxmox-backup-client snapshot list" --repository "$PBS_REPO:$name" \
-    $OUTPUT_FORMAT
+
+  #for each namespace in repository
+  TMP_NAMESPACE=$( mktemp -p /tmp/ )
+  ns=$(/bin/env proxmox-backup-client namespace list --repository "$PBS_REPO:$name" --output-format text)
+
+  #concat all jsons from each namespace
+  currlist="[]" 
+  echo "===proxmox-backup-client list===$name" 
+  while IFS= read -r line; do
+     l=$(/bin/env proxmox-backup-client list --repository "$PBS_REPO:$name" --ns $line $OUTPUT_FORMAT)
+     currlist=$(jq -s 'add' <(echo $currjson) <(echo $l))
+  done <<< "$ns"
+  echo $currlist
+
+  #concat all jsons from each namespace 
+  currsnap="[]" 
+  echo "===proxmox-backup-client snapshot list===$name"
+  while IFS= read -r line; do
+     j=$(/bin/env proxmox-backup-client snapshot list --repository "$PBS_REPO:$name" --ns $line $OUTPUT_FORMAT)
+     currsnap=$(jq -s 'add' <(echo $currsnap) <(echo $j))
+  done <<< "$ns"
+  echo $currsnap
+
   command_section -p "$name" \
     "proxmox-backup-client status" --repository "$PBS_REPO:$name" \
     $OUTPUT_FORMAT
