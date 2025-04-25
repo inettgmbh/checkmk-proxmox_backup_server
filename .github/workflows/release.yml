@@ -24,9 +24,9 @@ jobs:
           pip install git+https://github.com/inettgmbh/python-mkp.git@0.6
       - name: Build
         run: |
-          chmod +x build/mkp-pack.py build/update-version.py
-          build/update-version.py ${{ env.RELEASE_VERSION }}
-          build/mkp-pack.py
+          chmod +x build/mkp_pack.py build/update_version.py
+          build/update_version.py ${{ env.RELEASE_VERSION }}
+          build/mkp_pack.py
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
