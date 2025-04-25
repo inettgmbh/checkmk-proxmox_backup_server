@@ -38,7 +38,7 @@ jobs:
           draft: false
           prerelease: false
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v2.2.3
+        uses: actions/upload-artifact@v4.6.2
         with:
           # Artifact name
           name: mkp-package
