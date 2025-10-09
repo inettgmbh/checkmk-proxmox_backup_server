@@ -184,8 +184,8 @@ def check_proxmox_bs(item: str, params: Mapping[str, Any], section: Section) -> 
     status = data_store['proxmox-backup-client_status']                                                 # proxmox-backup-client status
 
     try:
-        size_mb = float(status['total'])
-        avail_mb = float(status['avail'])
+        size_mb = float(status['total'])/1024.0/1024.0
+        avail_mb = float(status['avail'])/1024.0/1024.0
         value_store = get_value_store()
 
         yield from df_check_filesystem_single(
@@ -193,7 +193,7 @@ def check_proxmox_bs(item: str, params: Mapping[str, Any], section: Section) -> 
             mountpoint=item,
             filesystem_size=size_mb,
             free_space=avail_mb,
-            reserved_space=None,
+            reserved_space=0,
             inodes_total=None,
             inodes_avail=None,
             params=params,
