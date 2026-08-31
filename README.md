@@ -5,9 +5,11 @@ This check_mk extension adds checks Proxmox Backup Server:
 * Datastore (Size, Usage)
 * Garbage collection
 * Verify jobs
+* 1.0 adds an optional special agent; local agent by default generates an API token for root, though a custom token can still be passed if prefered
 
 ## Warning
 This extension is still work in progress and **produces a huge agent output**
+#### 1.0+ reduced agent output size substantially by cutting unnecessary information agent side, but the generated output is still rather large.
 
 ## Installation
 The mkp archive can be downloaded directly from the [release](https://github.com/inettgmbh/checkmk-proxmox_backup_server/releases/latest) and installed by following the [documentation of check_mk](https://docs.checkmk.com/latest/en/mkps.html).
@@ -54,7 +56,7 @@ This extension 'works for us' right now, but it's far from optimal.
 * Check prune jobs
 * Check tape jobs
 * Check, if verify jobs are running
-* Optimize parsing of agent output
+* Optimize parsing of agent output (might be possible to further optimize output)
 * Add check parameters for timeouts of verify, garbage collection and prune jobs
 * Move todos and issues to GitHub issues and projects (without being recursive)
 
