@@ -8,7 +8,14 @@
    "cmk_addons_plugins": [
      "proxmox_bs/agent_based/proxmox_bs.py",
      "proxmox_bs/graphing/proxmox_bs.py",
-     "proxmox_bs/rulesets/proxmox_bs.py"
+     "proxmox_bs/libexec/agent_proxmox_bs",
+     "proxmox_bs/rulesets/proxmox_bs_local.py",
+     "proxmox_bs/rulesets/proxmox_bs_discovery.py",
+     "proxmox_bs/rulesets/proxmox_bs_special.py",
+     "proxmox_bs/rulesets/proxmox_bs_snapshot_age.py",
+     "proxmox_bs/rulesets/proxmox_bs_snapshot_age_discovery.py",
+     "proxmox_bs/rulesets/proxmox_bs_sync_jobs.py",
+     "proxmox_bs/server_side_calls/proxmox_bs.py"
    ],
    "lib": [
      "check_mk/base/cee/plugins/bakery/proxmox_bs.py"
@@ -17,7 +24,7 @@
  "name": "proxmox_bs",
  "num_files": 5,
  "title": "Proxmox Backup Server",
- "version": "0.4.20",
- "version.min_required": "2.3.0b6",
- "version.packaged": "2.3.0p7"
+ "version": "1.0.2",
+ "version.min_required": "2.4.0p1",
+ "version.packaged": "2.4.0p26"
 }
