@@ -13,14 +13,14 @@ import sys
 import urllib.parse
 from contextlib import contextmanager
 from json import JSONDecodeError
-from typing import Mapping, Any, Sequence, Iterable, Callable, Generator
+from pathlib import Path
+from typing import Mapping, Any, Sequence, Iterable
 
 import requests
 import requests.adapters
 import urllib3
-from pathlib import Path
 
-from cmk.utils import password_store
+from cmk.password_store.v1_unstable import parser_add_secret_option, resolve_secret_option
 from cmk.special_agents.v0_unstable.argument_parsing import Args, create_default_argument_parser
 from cmk.special_agents.v0_unstable.agent_common import (
     CannotRecover,
@@ -31,10 +31,14 @@ from cmk.utils.paths import tmp_dir
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 AGENT = "proxmox_bs"
-CacheFilePath = tmp_dir / "special_agents" / f"agent_{AGENT}" / "agent_cache.json"
+
 LOGGER = logging.getLogger(f"agent_{AGENT}")
+CacheFilePath = tmp_dir / "special_agents" / f"agent_{AGENT}" / "agent_cache.json"
+PASSWORD_OPTION = "password"
 
 RequestStructure = Sequence[Mapping[str, Any]] | Mapping[str, Any]
+TaskInfo = Mapping[str, Any]
+LogData = Iterable[Mapping[str, Any]]  # [{"d": int, "t": str}, {}, ..]
 
 Datastore_Structure = {
     "gc": {},
@@ -395,15 +399,12 @@ def agent_proxmox_bs_main(args: Args) -> int:
         cache_age = datetime.datetime.now().timestamp() - cache['cache_time']
 
         if cache_age > args.cache_time:
-            pw_id, pw_path = args.password.split(":")
-            password = password_store.lookup(Path(pw_path), pw_id)
-
             with ProxmoxBsAPI(
                 host=args.hostname,
                 port=args.port,
                 credentials={
                     "username": args.username,
-                    "password": password,
+                    "password": resolve_secret_option(args, PASSWORD_OPTION).reveal(),
                 },
                 timeout=args.timeout,
                 verify_ssl=not args.no_cert_check,
@@ -441,8 +442,8 @@ def agent_proxmox_bs_main(args: Args) -> int:
                     ]
                     data['admin']['datastore'] = [v.result() for v in futures if v is not None]
 
-            cache['cache_time'] = datetime.datetime.now().timestamp()
-            cache['data'] = data
+                cache['cache_time'] = datetime.datetime.now().timestamp()
+                cache['data'] = data
 
         else:
             data = cache['data']
@@ -507,6 +508,7 @@ def agent_proxmox_bs_main(args: Args) -> int:
             sys.stdout.write(f">running-tasks<\n")
             sys.stdout.write(f"{json.dumps(running_tasks)}\n")
 
+
     return 0
 
 
@@ -568,11 +570,8 @@ def parse_arguments(argv: Sequence[str] | None) -> Args:
         help="PBS Username",
     )
 
-    parser.add_argument(
-        "--password", "-p",
-        dest="password",
-        required=True,
-        help="PBS Password or API Token",
+    parser_add_secret_option(
+        parser, long=f"--{PASSWORD_OPTION}", short="-p", required=True, help="PBS Password or API Token"
     )
 
     parser.add_argument(
