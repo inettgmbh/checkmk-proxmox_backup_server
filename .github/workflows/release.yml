@@ -32,6 +32,13 @@ jobs:
           build/update_version.py ${{ env.RELEASE_VERSION }}
           build/mkp_pack.py
 
+      - name: Upload a Build Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mkp-package
+          path: "*.mkp"
+          archive: false
+
       - name: Upload build artifact
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
