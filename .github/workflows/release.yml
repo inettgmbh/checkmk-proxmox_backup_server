@@ -6,19 +6,7 @@ on:
       - "[0-9]+.[0-9]+.[0-9]*"
 
 jobs:
-  prepare:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Create Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          tag="${{ github.ref }}"
-          gh release create --draft "$tag"
-          
   build:
-    needs: [prepare]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,7 +40,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: [prepare, build]
+    needs: [build]
     steps:
       - name: Publish Release
         env:
