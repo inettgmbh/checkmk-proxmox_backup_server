@@ -12,71 +12,80 @@ from cmk.graphing.v1.metrics import (
     Unit,
     DecimalNotation,
     Color,
+    StrictPrecision,
 )
 
 
-metric_group_count = Metric(
-    name="group_count",
+metric_proxmox_bs_group_count = Metric(
+    name="proxmox_bs_group_count",
     title=Title("Number of backup groups"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_PURPLE,
 )
 
 
-metric_total_backups = Metric(
-    name="total_backups",
+metric_proxmox_bs_backup_count = Metric(
+    name="proxmox_bs_backup_count",
     title=Title("Number of backups"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_PURPLE,
 )
 
 
-metric_verify_ok = Metric(
-    name="verify_ok",
+metric_proxmox_bs_verify_ok = Metric(
+    name="proxmox_bs_verify_ok",
     title=Title("Snapshots successfully verified"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_PURPLE,
 )
 
 
-metric_verify_failed = Metric(
-    name="verify_failed",
+metric_proxmox_bs_verify_fail = Metric(
+    name="proxmox_bs_verify_fail",
     title=Title("Snapshots with failed verification"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_ORANGE,
 )
 
 
-metric_verify_unknown = Metric(
-    name="verify_unknown",
+metric_proxmox_bs_verify_unknown = Metric(
+    name="proxmox_bs_verify_unknown",
     title=Title("Snapshots with unknown verification status"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_ORANGE,
 )
 
 
-metric_verify_none = Metric(
-    name="verify_none",
+metric_proxmox_bs_verify_none = Metric(
+    name="proxmox_bs_verify_none",
     title=Title("Unverified Snapshots"),
     unit=Unit(DecimalNotation("count")),
     color=Color.LIGHT_ORANGE,
 )
 
 
-graph_pbs_info = Graph(
+graph_proxmox_bs_info = Graph(
     name="snapshots",
     title=Title("Backups"),
     minimal_range=MinimalRange("verify_ok:min", "total_backups:max"),
     compound_lines=[
-        "verify_ok",
-        "verify_failed",
-        "verify_unknown",
-        "verify_none",
+        "proxmox_bs_verify_ok",
+        "proxmox_bs_verify_fail",
+        "proxmox_bs_verify_unknown",
+        "proxmox_bs_verify_none",
     ],
     optional=[
-        "verify_ok",
-        "verify_failed",
-        "verify_unknown",
-        "verify_none",
+        "proxmox_bs_verify_ok",
+        "proxmox_bs_verify_fail",
+        "proxmox_bs_verify_unknown",
+        "proxmox_bs_verify_none",
     ],
+)
+
+
+metric_proxmox_bs_sync_job_success_percentage = Metric(
+    name="proxmox_bs_sync_job_success_percentage",
+    title=Title("% of recent successful Synchronization Jobs"),
+    unit=Unit(DecimalNotation("%"), StrictPrecision(digits=2)),
+    color=Color.CYAN,
 )

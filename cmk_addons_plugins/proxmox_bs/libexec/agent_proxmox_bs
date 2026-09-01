@@ -4,28 +4,35 @@
 # License: GNU General Public License v2
 # A file is subject to the terms and conditions defined in the file LICENSE,
 # which is part of this source code package.
-import os
-import re
-import time
-from configparser import ConfigParser
-import json
-import subprocess
-from concurrent.futures import ThreadPoolExecutor
 import datetime
+import json
+import re
+from concurrent.futures import ThreadPoolExecutor
+import logging
 import sys
 import urllib.parse
+from contextlib import contextmanager
 from json import JSONDecodeError
-from typing import Mapping, Any, Sequence, Iterable
+from typing import Mapping, Any, Sequence, Iterable, Callable, Generator
 
 import requests
 import requests.adapters
 import urllib3
+from pathlib import Path
+
+from cmk.utils import password_store
+from cmk.special_agents.v0_unstable.argument_parsing import Args, create_default_argument_parser
+from cmk.special_agents.v0_unstable.agent_common import (
+    CannotRecover,
+    special_agent_main,
+)
+from cmk.utils.paths import tmp_dir
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-CMK_CONF_PATH = "/etc/check_mk/proxmox_bs.ini"
-CMK_TOKEN_CONF_PATH = "/etc/check_mk/proxmox_bs_token.ini"
-PBS_AUTO_AUTH_TOKEN_NAME = "cmk-proxmox-bs"
+AGENT = "proxmox_bs"
+CacheFilePath = tmp_dir / "special_agents" / f"agent_{AGENT}" / "agent_cache.json"
+LOGGER = logging.getLogger(f"agent_{AGENT}")
 
 RequestStructure = Sequence[Mapping[str, Any]] | Mapping[str, Any]
 
@@ -64,7 +71,11 @@ class ProxmoxBsSession:
             )
 
             if response is None:
-                raise requests.exceptions.HTTPError
+                raise CannotRecover(
+                    "Couldn't authenticate {!r} @ {!r}".format(
+                        credentials.get("username", "no-username"), ticket_url
+                    )
+                )
 
             self.pbs_auth_cookie = response["ticket"]
             self.csrf_prevention_token = response["CSRFPreventionToken"]
@@ -137,11 +148,11 @@ class ProxmoxBsSession:
         try:
             return self._get_raw(base_path + path + option_string)
         except requests.exceptions.ReadTimeout:
-            raise requests.exceptions.ReadTimeout
+            raise CannotRecover(f"Read timeout after {self._timeout}s when trying to GET {path}")
         except requests.exceptions.ConnectionError as exc:
-            raise exc
+            raise CannotRecover(f"Could not GET element {path} ({exc})") from exc
         except JSONDecodeError as e:
-            raise e
+            raise CannotRecover("Couldn't parse API element %r" % path) from e
 
     def _get_raw(self, sub_url: str) -> object:
         return (
@@ -153,6 +164,7 @@ class ProxmoxBsSession:
                     verify=self._verify_ssl,
                     timeout=self._timeout,
                 ),
+                sub_url,
             )
         )
 
@@ -169,7 +181,8 @@ class ProxmoxBsSession:
                     verify=self._verify_ssl,
                     timeout=self._timeout,
                     params={"start": start, "limit": page_size},
-                )
+                ),
+                sub_url,
             )
             assert isinstance(response_data, Sequence)
             data += response_data
@@ -182,12 +195,14 @@ class ProxmoxBsSession:
         return data
 
     @staticmethod
-    def _validate_response(response: requests.Response) -> object:
+    def _validate_response(response: requests.Response, sub_url: str) -> object:
         if not response.ok:
             return []
         response_json = response.json()
         if "errors" in response_json:
-            raise requests.exceptions.HTTPError
+            raise CannotRecover(
+                "Could not fetch {!r} ({!r})".format(sub_url, response_json["errors"])
+            )
         return response_json.get("data")
 
 
@@ -197,6 +212,7 @@ class ProxmoxBsAPI:
         self, host: str, port: int, credentials: Any, timeout: int, verify_ssl: bool, token_auth: bool
     ) -> None:
         try:
+            LOGGER.info("Establish connection to Proxmox BS host %r", host)
             self._session = ProxmoxBsSession(
                 endpoint=(host, port),
                 credentials=credentials,
@@ -205,9 +221,9 @@ class ProxmoxBsAPI:
                 token_auth=token_auth,
             )
         except requests.exceptions.ConnectTimeout:
-            raise requests.exceptions.ConnectTimeout
+            raise CannotRecover(f"Timeout after {timeout}s when trying to connect to {host}:{port}")
         except requests.exceptions.ConnectionError as exc:
-            raise exc
+            raise CannotRecover(f"Could not connect to {host}:{port} ({exc})") from exc
 
     def __enter__(self) -> Any:
         self._session.__enter__()
@@ -355,52 +371,83 @@ class ProxmoxBsAPI:
         return data
 
 
-def agent_proxmox_bs_main(authid: str, secret: str, port: int, timeout: int, token_auth: bool) -> int:
-    with ProxmoxBsAPI(
-        host="127.0.0.1",
-        port=port,
-        credentials={'username': authid, 'password': secret},
-        timeout=timeout,
-        verify_ssl=False,
-        token_auth=token_auth,
-    ) as session:
-        data = session.get_tree(
-            {
-                "admin": {
-                    "datastore": [],
-                    "gc": [],
-                    "prune": [],
-                    "sync": [],
-                    "verify": [],
+@contextmanager
+def JsonCachedData(path: Path):
+    path.parents[0].mkdir(parents=True, exist_ok=True)
+    try:
+        with path.open(mode="r") as cache_file:
+            cache = json.load(cache_file)
+        LOGGER.debug("Cache: loaded present cache")
+    except (FileNotFoundError, json.JSONDecodeError):
+        LOGGER.warning("Cache: could not find file - start a new one")
+        cache = {'cache_time': 0.0}
+
+    try:
+        yield cache
+    finally:
+        with path.open(mode="w+") as cache_file:
+            json.dump(cache, cache_file, indent=2)
+
+
+def agent_proxmox_bs_main(args: Args) -> int:
+    # Read cache file
+    with JsonCachedData(CacheFilePath) as cache:
+        cache_age = datetime.datetime.now().timestamp() - cache['cache_time']
+
+        if cache_age > args.cache_time:
+            pw_id, pw_path = args.password.split(":")
+            password = password_store.lookup(Path(pw_path), pw_id)
+
+            with ProxmoxBsAPI(
+                host=args.hostname,
+                port=args.port,
+                credentials={
+                    "username": args.username,
+                    "password": password,
                 },
-                "version": {},
-                "status": {
-                    "datastore-usage": [],
-                },
-                "config": {
-                    "datastore": [],
-                }
-            }
-        )
+                timeout=args.timeout,
+                verify_ssl=not args.no_cert_check,
+                token_auth=True if re.match(r".+@.+!.+", getattr(args, "username")) else False,
+            ) as session:
+                LOGGER.info("Fetch pbs information..")
+                data = session.get_tree(
+                    {
+                        "admin": {
+                            "datastore": [],
+                            "gc": [],
+                            "prune": [],
+                            "sync": [],
+                            "verify": [],
+                        },
+                        "nodes": [],
+                        "version": {},
+                        "status": {
+                            "datastore-usage": [],
+                        },
+                        "config": {
+                            "datastore": [],
+                        }
+                    }
+                )
 
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            futures = [
-                executor.submit(
-                    session.get_datastore,
-                    ds['store'],
-                    Datastore_Structure,
-                    NamespaceStructure
-                ) for ds in data['admin']['datastore']
-            ]
-            data['admin']['datastore'] = [v.result() for v in futures if v is not None]
+                with ThreadPoolExecutor(max_workers=100) as executor:
+                    futures = [
+                        executor.submit(
+                            session.get_datastore,
+                            ds['store'],
+                            Datastore_Structure,
+                            NamespaceStructure
+                        ) for ds in data['admin']['datastore']
+                    ]
+                    data['admin']['datastore'] = [v.result() for v in futures if v is not None]
 
-        running_tasks = session.get("api2/json/", f"nodes/0/tasks/", options={'running': True, 'limit': 0})
-        running_tasks = [{
-            'start-time': x['starttime'],
-            'worker-type': x['worker_type'],
-            'worker-id': x['worker_id']
-        } for x in running_tasks]
+            cache['cache_time'] = datetime.datetime.now().timestamp()
+            cache['data'] = data
 
+        else:
+            data = cache['data']
+
+        LOGGER.info("Write agent output..")
         sys.stdout.write(f"<<<proxmox_bs:sep(0)>>>\n")
 
         # Sync Job Section
@@ -448,11 +495,17 @@ def agent_proxmox_bs_main(authid: str, secret: str, port: int, timeout: int, tok
 
                 sys.stdout.write(f"{json.dumps(datastore)}\n")
 
-        # Task Section
+        # Task Section; This is not cached
+        running_tasks = session.get("api2/json/", f"nodes/0/tasks/", options={'running': True, 'limit': 0})
+        running_tasks = [{
+            'start-time': x['starttime'],
+            'worker-type': x['worker_type'],
+            'worker-id': x['worker_id']
+        } for x in running_tasks]
+
         if len(running_tasks) > 0:
             sys.stdout.write(f">running-tasks<\n")
             sys.stdout.write(f"{json.dumps(running_tasks)}\n")
-
 
     return 0
 
@@ -505,66 +558,58 @@ def _create_verification_mapping(snapshots: list) -> Mapping[str, Any]:
     return result
 
 
+def parse_arguments(argv: Sequence[str] | None) -> Args:
+    parser = create_default_argument_parser(description=__doc__)
+
+    parser.add_argument(
+        "--username", "-u",
+        dest="username",
+        required=True,
+        help="PBS Username",
+    )
+
+    parser.add_argument(
+        "--password", "-p",
+        dest="password",
+        required=True,
+        help="PBS Password or API Token",
+    )
+
+    parser.add_argument(
+        "--port", "-P",
+        dest="port",
+        type=int,
+        default=8007,
+        help="PBS Port",
+    )
+
+    parser.add_argument(
+        "--no-cert-check",
+        dest="no_cert_check",
+        action="store_true",
+        help="If \"True\": Disable TLS certificate check (not recommended!)",
+    )
+
+    parser.add_argument(
+        "--timeout", "-t",
+        type=int,
+        default=50,
+        help="API call timeout"
+    )
+
+    parser.add_argument(
+        "--cache-time",
+        type=int,
+        default=3600,
+        help="Cache time for received Data."
+    )
+
+    parser.add_argument("hostname",help="PBS Hostname (FQDN or IP)")
+    return parser.parse_args(argv)
+
+
 def main() -> int:
-    config = ConfigParser()
-    config.read(CMK_CONF_PATH)
-    auth_option = config.get("auth", "auth_option", fallback="auto")
-    result = 1
-    port = int(config.get("connection", "port", fallback="8007"))
-    timeout = int(config.get("connection", "timeout", fallback="600"))
-    match auth_option:
-        case "auto":
-            token_config = ConfigParser()
-            token_config.read(CMK_TOKEN_CONF_PATH)
-            authid = token_config.get("auth", "authid", fallback="")
-            token = token_config.get("auth", "token", fallback="")
-
-            if authid == "" or token == "" or requests.get(
-                "https://localhost:8007/api2/json",
-                headers={"Authorization": f"PBSAPIToken={authid}:{token}"},
-                verify=False,
-            ).status_code != 200:
-                subprocess.run(["proxmox-backup-manager", "user", "delete-token", "root@pam", PBS_AUTO_AUTH_TOKEN_NAME])
-
-                expiration = int((datetime.datetime.now() + datetime.timedelta(hours=24)).timestamp())
-                command = subprocess.run(
-                    ["proxmox-backup-manager", "user", "generate-token", "root@pam", PBS_AUTO_AUTH_TOKEN_NAME, "--expire", f"{expiration}"],
-                    capture_output=True,
-                    text=True
-                )
-                command_output = json.loads(
-                    command.stdout.replace("Result: ", "").replace("\n", "")
-                )
-                authid = command_output['tokenid']
-                token = command_output['value']
-                subprocess.run(
-                    ["proxmox-backup-manager", "acl", "update", "/", "Admin", "--auth-id", authid, "--propagate", "true"]
-                )
-
-                token_config['auth'] = {'authid': authid, 'token': token}
-                with os.fdopen(os.open(CMK_TOKEN_CONF_PATH, os.O_WRONLY | os.O_CREAT, 0o600), 'w') as f:
-                    token_config.write(f)
-
-                # Wait for token to be usable; usability is tested based on output of config/nodes endpoint
-                for i in range(10):
-                    response = requests.get(
-                        "https://localhost:8007/api2/json/admin/datastore/",
-                        headers={"Authorization": f"PBSAPIToken={authid}:{token}"},
-                        verify=False,
-                    )
-                    if response.status_code == 200 and response.json() != {'data': []}:
-                        break
-                    time.sleep(1)
-
-            result = agent_proxmox_bs_main(authid, token, port, timeout, True)
-
-        case "simple":
-            authid = config.get("auth", "authid")
-            token = config.get("auth", "token")
-            use_token = True if re.match(r".+@.+!.+", authid) else False
-            result = agent_proxmox_bs_main(authid, token, port, timeout, use_token)
-
-    return result
+    return special_agent_main(parse_arguments, agent_proxmox_bs_main)
 
 
 if __name__ == "__main__":
