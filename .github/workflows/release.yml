@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -17,9 +17,9 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
-          python-version: 3.8
+          python-version: 3.12
 
       - name: Install dependencies
         run: |
@@ -39,11 +39,11 @@ jobs:
           path: "*.mkp"
           archive: false
 
-      - name: Upload build artifact
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ github.ref }}" "proxmox_bs-${{ env.RELEASE_VERSION }}.mkp"
+      - name: Release mkp
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            *.mkp
 
   publish:
     runs-on: ubuntu-latest
