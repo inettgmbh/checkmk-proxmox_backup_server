@@ -36,7 +36,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release upload "${{ github.ref }}" "proxmox_bs-${{ github.ref }}.mkp"
+        run: gh release upload "${{ github.ref }}" "proxmox_bs-${{ env.RELEASE_VERSION }}.mkp"
 
   publish:
     runs-on: ubuntu-latest
