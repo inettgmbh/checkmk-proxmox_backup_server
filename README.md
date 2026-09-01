@@ -14,10 +14,25 @@ This extension is still work in progress and **produces a huge agent output**
 ## Installation
 The mkp archive can be downloaded directly from the [release](https://github.com/inettgmbh/checkmk-proxmox_backup_server/releases/latest) and installed by following the [documentation of check_mk](https://docs.checkmk.com/latest/en/mkps.html).
 
+## Configuration
+A list of all configurations in CheckMK can be found through the keyword `proxmox_bs`.
+The plugin includes 2 deployment methods:
+* Special agent: configured in `Setup > Agents > VM, cloud, container > Proxmox Backup Server`
+* Local agent: configured in `Setup > Agents > Windows, Linux, Solaris, AIX > Agent rules > Proxmox Backup Server`
+  * This agent can be deployed without password, in which case a new token will be generated on the host, that lasts 1 day.
+
+Discovery rules are available to control which backup stores should be monitored, and if each namespace should receive its own service:
+* `Setup > Services > Service discovery rules > Proxmox Backup Server`
+* `Setup > Services > Service discovery rules > Proxmox Backup Server Snapshot Age`
+
+Finally, age levels of snapshots and sync-jobs can be adjusted using these monitoring rules:
+* `Setup > Services > Service monitoring rules > Proxmox Backup Server Snapshot Age`
+* `Setup > Services > Service monitoring rules > Proxmox Backup Server Sync Jobs`
+
 ## Building
 Usually you don't see a section as how to build an mkp, because usually it's done like check_mk suggests using [WATO](https://docs.checkmk.com/latest/en/mkps.html#_creating_packages) or [CLI](https://docs.checkmk.com/latest/en/mkps.html#_creating_a_package).
 But we made it easier and included two helper tools into this repository, that depend on the tool [python-mkp](https://github.com/inettgmbh/python-mkp), which is a fork of [tom-mi/python-mkp](https://github.com/tom-mi/python-mkp).
-Unfortunally, the original tool, which can be installed using `pip` **cannot** be used because it wouldn't package some files.
+Unfortunately, the original tool, which can be installed using `pip` **cannot** be used because it wouldn't package some files.
 
 ### Requirements
 * python-mkp
@@ -46,13 +61,9 @@ Try to explain as clear and short as possible.
 yes, we have those
 This extension 'works for us' right now, but it's far from optimal.
 
-* Agent output is way to much and must be optimized
-* Names of metrics should be changed
-
 ## TODOs
 (even more, than issues)
 
-* Check of sync jobs
 * Check prune jobs
 * Check tape jobs
 * Check, if verify jobs are running
