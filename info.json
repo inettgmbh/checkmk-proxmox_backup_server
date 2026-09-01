@@ -24,7 +24,7 @@
  "name": "proxmox_bs",
  "num_files": 5,
  "title": "Proxmox Backup Server",
- "version": "1.0.2",
- "version.min_required": "2.4.0p1",
- "version.packaged": "2.4.0p26"
+ "version": "1.1.0",
+ "version.min_required": "2.5.0p1",
+ "version.packaged": "2.5.0p12"
 }
