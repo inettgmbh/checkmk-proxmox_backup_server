@@ -77,11 +77,11 @@ def discover_proxmox_bs(params: Mapping[str, Any], section: Section) -> Discover
                 else:
                     yield _prepare_service(datastore)
 
-    filter_param = params['filter'] if params['filter'] is not None else {}
-    match filter_param.get('datastores', ('all', 'all')):
+    filter_param = params['filter']
+    match filter_param.get('datastores'):
         case ('regex', regex):
             regex = re.compile(regex)
-            match filter_param.get('limit_key', ('name', 'name'))[1]:
+            match filter_param.get('limit_key')[1]:
                 case 'name':
                     yield from _yield_services(
                         (lambda x, y: y.match(x)),
@@ -96,7 +96,7 @@ def discover_proxmox_bs(params: Mapping[str, Any], section: Section) -> Discover
                     )
         case ('selected', selection):
             selection = selection.split('\\n')
-            match filter_param.get('limit_key', ('name', 'name'))[1]:
+            match filter_param.get('limit_key')[1]:
                 case 'name':
                     yield from _yield_services(
                         (lambda x, y: x in y),
@@ -323,7 +323,10 @@ check_plugin_proxmox_bs = CheckPlugin(
     discovery_ruleset_name="proxmox_bs_discovery",
     discovery_ruleset_type=RuleSetType.MERGED,
     discovery_default_parameters={
-        "filter": None,
+        "filter": {
+            "datastores": ("all", "all"),
+            "limit_key": ("name", "name"),
+        },
         "seperate_namespaces": False
     },
 )
@@ -347,7 +350,12 @@ def check_proxmox_bs_sync_jobs(
     value_store = get_value_store()
 
     last_run_state = sync_job.get("last-run-state", "Unknown")
+    if not isinstance(last_run_state, str):
+        last_run_state = "Unknown"
+
     last_run_endtime = sync_job.get("last-run-endtime", 0)
+    if not isinstance(last_run_endtime, int):
+        last_run_endtime = 0
 
     if last_run_state == "OK":
         value_store["last_successful_run_endtime"] = last_run_endtime
@@ -484,7 +492,10 @@ check_plugin_proxmox_bs_snapshot_age = CheckPlugin(
     discovery_ruleset_name="proxmox_bs_snapshot_age_discovery",
     discovery_ruleset_type=RuleSetType.MERGED,
     discovery_default_parameters={
-        "filter": None,
+        "filter": {
+            "datastores": ("all", "all"),
+            "limit_key": ("name", "name"),
+        },
         "seperate_namespaces": False
     },
 )
